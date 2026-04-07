@@ -1,7 +1,9 @@
 const express = require('express');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+app.use(cors()); // Enable CORS for all origins
 const PORT = process.env.PORT || 3000;
 
 // Routes
@@ -10,6 +12,7 @@ const activateRoute = require('./routes/activate');
 const adminRoute = require('./routes/admin');
 
 // Middleware
+app.use(cors());
 app.use(express.json());
 
 // Routes implementation
