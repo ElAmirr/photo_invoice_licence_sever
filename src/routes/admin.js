@@ -52,7 +52,7 @@ router.post('/generate-key', isAdmin, async (req, res) => {
 router.get('/licenses', isAdmin, async (req, res) => {
     try {
         const result = await db.query(
-            'SELECT id, key, hwid, activated_at, created_at, expires_at FROM license_keys ORDER BY created_at DESC'
+            'SELECT id, key, hwid, activated_at, created_at, expires_at, last_heartbeat FROM license_keys ORDER BY created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {
