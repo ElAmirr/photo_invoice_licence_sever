@@ -52,7 +52,9 @@ router.post('/', async (req, res) => {
         if (license.hwid === hwid) {
             return res.json({
                 success: true,
-                message: "Key already activated on this device."
+                message: "Key already activated on this device.",
+                expiresAt: license.expires_at,
+                expires_at: license.expires_at
             });
         }
 
@@ -64,7 +66,9 @@ router.post('/', async (req, res) => {
 
         return res.json({
             success: true,
-            message: "License activated successfully!"
+            message: "Activé avec succès",
+            expiresAt: license.expires_at,
+            expires_at: license.expires_at
         });
 
     } catch (err) {
@@ -89,7 +93,7 @@ router.post('/heartbeat', async (req, res) => {
 
     try {
         const result = await db.query(
-            'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1 AND hwid = $2 RETURNING id',
+            'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1 AND hwid = $2 RETURNING id, expires_at',
             [key, hwid]
         );
 
@@ -97,7 +101,11 @@ router.post('/heartbeat', async (req, res) => {
             return res.status(404).json({ success: false, message: "License not found or HWID mismatch." });
         }
 
-        res.json({ success: true });
+        res.json({
+            success: true,
+            expiresAt: result.rows[0].expires_at,
+            expires_at: result.rows[0].expires_at
+        });
     } catch (err) {
         console.error('Heartbeat error:', err);
         res.status(500).json({ success: false });
