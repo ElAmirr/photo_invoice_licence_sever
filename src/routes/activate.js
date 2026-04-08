@@ -76,4 +76,32 @@ router.post('/', async (req, res) => {
     }
 });
 
+/**
+ * @route   POST /api/activate/heartbeat
+ * @desc    Update the last seen status of a license
+ */
+router.post('/heartbeat', async (req, res) => {
+    const { key, hwid } = req.body;
+
+    if (!key || !hwid) {
+        return res.status(400).json({ success: false, message: "Key and HWID required." });
+    }
+
+    try {
+        const result = await db.query(
+            'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1 AND hwid = $2 RETURNING id',
+            [key, hwid]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: "License not found or HWID mismatch." });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Heartbeat error:', err);
+        res.status(500).json({ success: false });
+    }
+});
+
 module.exports = router;

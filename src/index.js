@@ -14,15 +14,16 @@ const PORT = process.env.PORT || 3000;
 const healthRoute = require('./routes/health');
 const activateRoute = require('./routes/activate');
 const adminRoute = require('./routes/admin');
+const trialsRoute = require('./routes/trials');
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // Routes implementation
 app.use('/api/health', healthRoute);
 app.use('/api/activate', activateRoute);
 app.use('/api/admin', adminRoute);
+app.use('/api/trials', trialsRoute);
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

@@ -8,16 +8,27 @@ const migrate = async () => {
       hwid TEXT DEFAULT NULL,
       activated_at TIMESTAMP DEFAULT NULL,
       created_at TIMESTAMP DEFAULT NOW(),
-      expires_at TIMESTAMP DEFAULT NULL
+      expires_at TIMESTAMP DEFAULT NULL,
+      last_heartbeat TIMESTAMP DEFAULT NULL
     );
 
-    -- Add column if it doesn't exist (for existing databases)
+    -- Add columns if they don't exist (for existing databases)
     DO $$ 
     BEGIN 
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='expires_at') THEN
         ALTER TABLE license_keys ADD COLUMN expires_at TIMESTAMP DEFAULT NULL;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='last_heartbeat') THEN
+        ALTER TABLE license_keys ADD COLUMN last_heartbeat TIMESTAMP DEFAULT NULL;
+      END IF;
     END $$;
+
+    CREATE TABLE IF NOT EXISTS trials (
+      id SERIAL PRIMARY KEY,
+      hwid TEXT UNIQUE NOT NULL,
+      started_at TIMESTAMP DEFAULT NOW(),
+      last_heartbeat TIMESTAMP DEFAULT NULL
+    );
   `;
 
   try {
