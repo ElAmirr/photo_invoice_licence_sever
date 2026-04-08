@@ -52,7 +52,7 @@ router.post('/generate-key', isAdmin, async (req, res) => {
 router.get('/licenses', isAdmin, async (req, res) => {
     try {
         const result = await db.query(
-            'SELECT id, key, hwid, activated_at, created_at, expires_at, last_heartbeat FROM license_keys ORDER BY created_at DESC'
+            'SELECT id, key, hwid, activated_at, created_at, expires_at FROM license_keys ORDER BY created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {
@@ -110,22 +110,6 @@ router.delete('/license/:id', isAdmin, async (req, res) => {
     } catch (err) {
         console.error('Delete license error:', err);
         res.status(500).json({ error: "Failed to delete license" });
-    }
-});
-
-/**
- * @route   GET /api/admin/trials
- * @desc    Fetch all trial machines
- */
-router.get('/trials', isAdmin, async (req, res) => {
-    try {
-        const result = await db.query(
-            'SELECT id, hwid, started_at, last_heartbeat FROM trials ORDER BY started_at DESC'
-        );
-        res.json(result.rows);
-    } catch (err) {
-        console.error('Fetch trials error:', err);
-        res.status(500).json({ error: "Failed to fetch trials" });
     }
 });
 
