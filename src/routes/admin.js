@@ -21,13 +21,19 @@ const isAdmin = (req, res, next) => {
  * @desc    Generate a new unique license key and store it in the DB
  */
 router.post('/generate-key', isAdmin, async (req, res) => {
+    const { durationDays } = req.body;
     const newKey = uuidv4();
 
     try {
-        await db.query(
-            'INSERT INTO license_keys (key) VALUES ($1)',
-            [newKey]
-        );
+        let query = 'INSERT INTO license_keys (key) VALUES ($1)';
+        let params = [newKey];
+
+        if (durationDays) {
+            query = 'INSERT INTO license_keys (key, expires_at) VALUES ($1, NOW() + ($2 || \' days\')::interval)';
+            params.push(durationDays);
+        }
+
+        await db.query(query, params);
 
         res.status(201).json({
             success: true,

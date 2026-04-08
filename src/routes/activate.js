@@ -19,7 +19,7 @@ router.post('/', async (req, res) => {
     try {
         // 1. Check if the key exists
         const result = await db.query(
-            'SELECT id, hwid FROM license_keys WHERE key = $1',
+            'SELECT id, hwid, expires_at FROM license_keys WHERE key = $1',
             [key]
         );
 
@@ -31,6 +31,14 @@ router.post('/', async (req, res) => {
         }
 
         const license = result.rows[0];
+
+        // 1.5. Check expiration
+        if (license.expires_at && new Date() > new Date(license.expires_at)) {
+            return res.status(403).json({
+                success: false,
+                message: "Votre abonnement a expiré"
+            });
+        }
 
         // 2. If already activated by a different HWID
         if (license.hwid && license.hwid !== hwid) {

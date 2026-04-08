@@ -48,7 +48,9 @@ If not using Blueprints, manually set these in the Render dashboard:
 ### 3. Generate Key (Admin Only)
 `POST /api/admin/generate-key`
 - **Headers**: `x-admin-token: YOUR_ADMIN_SECRET`
+- **Body** (Optional): `{ "durationDays": 30 }`
 - **Response**: `{ "success": true, "key": "..." }`
+- **Logic**: If `durationDays` is provided, the key will expire after that many days. If omitted, it's a **Lifetime** key.
 
 ---
 
