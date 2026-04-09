@@ -21,6 +21,26 @@ const migrate = async () => {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='last_heartbeat') THEN
         ALTER TABLE license_keys ADD COLUMN last_heartbeat TIMESTAMP DEFAULT NULL;
       END IF;
+      -- Customer Info
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='customer_name') THEN
+        ALTER TABLE license_keys ADD COLUMN customer_name TEXT DEFAULT NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='customer_email') THEN
+        ALTER TABLE license_keys ADD COLUMN customer_email TEXT DEFAULT NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='studio_name') THEN
+        ALTER TABLE license_keys ADD COLUMN studio_name TEXT DEFAULT NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='phone') THEN
+        ALTER TABLE license_keys ADD COLUMN phone TEXT DEFAULT NULL;
+      END IF;
+      -- PC Insights
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='app_version') THEN
+        ALTER TABLE license_keys ADD COLUMN app_version TEXT DEFAULT NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='os_info') THEN
+        ALTER TABLE license_keys ADD COLUMN os_info TEXT DEFAULT NULL;
+      END IF;
     END $$;
 
     CREATE TABLE IF NOT EXISTS trials (

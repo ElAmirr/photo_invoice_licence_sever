@@ -21,17 +21,32 @@ const isAdmin = (req, res, next) => {
  * @desc    Generate a new unique license key and store it in the DB
  */
 router.post('/generate-key', isAdmin, async (req, res) => {
-    const { durationDays } = req.body;
+    const {
+        durationDays,
+        customerName,
+        customerEmail,
+        studioName,
+        phone
+    } = req.body;
+
     const newKey = uuidv4();
 
     try {
-        let query = 'INSERT INTO license_keys (key) VALUES ($1)';
-        let params = [newKey];
-
-        if (durationDays) {
-            query = 'INSERT INTO license_keys (key, expires_at) VALUES ($1, NOW() + ($2 || \' days\')::interval)';
-            params.push(durationDays);
-        }
+        const query = `
+            INSERT INTO license_keys (
+                key, 
+                expires_at, 
+                customer_name, 
+                customer_email, 
+                studio_name, 
+                phone
+            ) VALUES (
+                $1, 
+                CASE WHEN $2::integer IS NOT NULL THEN NOW() + ($2 || ' days')::interval ELSE NULL END, 
+                $3, $4, $5, $6
+            )
+        `;
+        const params = [newKey, durationDays || null, customerName, customerEmail, studioName, phone];
 
         await db.query(query, params);
 
@@ -52,7 +67,7 @@ router.post('/generate-key', isAdmin, async (req, res) => {
 router.get('/licenses', isAdmin, async (req, res) => {
     try {
         const result = await db.query(
-            'SELECT id, key, hwid, activated_at, created_at, expires_at, last_heartbeat FROM license_keys ORDER BY created_at DESC'
+            'SELECT * FROM license_keys ORDER BY created_at DESC'
         );
         res.json(result.rows);
     } catch (err) {

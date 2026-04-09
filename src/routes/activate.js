@@ -7,7 +7,7 @@ const db = require('../db');
  * @desc    Activate a license key and bind it to a hardware ID (HWID)
  */
 router.post('/', async (req, res) => {
-    const { key, hwid } = req.body;
+    const { key, hwid, version, os } = req.body;
 
     if (!key || !hwid) {
         return res.status(400).json({
@@ -50,11 +50,11 @@ router.post('/', async (req, res) => {
 
         // 3. If already activated by the SAME HWID (idempotency)
         if (license.hwid === hwid) {
-            console.log(`[Heartbeat] Key ${key} seen again on ${hwid}`);
+            console.log(`[Heartbeat] Key ${key} seen again on ${hwid} (v${version || '?'})`);
             // Update last seen heartbeat even if already activated
             await db.query(
-                'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1',
-                [key]
+                'UPDATE license_keys SET last_heartbeat = NOW(), app_version = COALESCE($2, app_version), os_info = COALESCE($3, os_info) WHERE key = $1',
+                [key, version, os]
             );
 
             return res.json({
@@ -67,8 +67,8 @@ router.post('/', async (req, res) => {
 
         // 4. Activate key (bind to HWID)
         await db.query(
-            'UPDATE license_keys SET hwid = $1, activated_at = NOW(), last_heartbeat = NOW() WHERE key = $2',
-            [hwid, key]
+            'UPDATE license_keys SET hwid = $1, activated_at = NOW(), last_heartbeat = NOW(), app_version = $3, os_info = $4 WHERE key = $2',
+            [hwid, key, version, os]
         );
 
         return res.json({
@@ -92,17 +92,17 @@ router.post('/', async (req, res) => {
  * @desc    Update the last seen status of a license
  */
 router.post('/heartbeat', async (req, res) => {
-    const { key, hwid } = req.body;
+    const { key, hwid, version, os } = req.body;
 
     if (!key || !hwid) {
         return res.status(400).json({ success: false, message: "Key and HWID required." });
     }
 
     try {
-        console.log(`[Heartbeat] Manual heartbeat for ${key} on ${hwid}`);
+        console.log(`[Heartbeat] Manual heartbeat for ${key} on ${hwid} (v${version || '?'})`);
         const result = await db.query(
-            'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1 AND hwid = $2 RETURNING id, expires_at',
-            [key, hwid]
+            'UPDATE license_keys SET last_heartbeat = NOW(), app_version = COALESCE($3, app_version), os_info = COALESCE($4, os_info) WHERE key = $1 AND hwid = $2 RETURNING id, expires_at',
+            [key, hwid, version, os]
         );
 
         if (result.rowCount === 0) {
