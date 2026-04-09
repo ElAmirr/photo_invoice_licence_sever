@@ -60,7 +60,7 @@ router.post('/', async (req, res) => {
 
         // 4. Activate key (bind to HWID)
         await db.query(
-            'UPDATE license_keys SET hwid = $1, activated_at = NOW() WHERE key = $2',
+            'UPDATE license_keys SET hwid = $1, activated_at = NOW(), last_heartbeat = NOW() WHERE key = $2',
             [hwid, key]
         );
 
