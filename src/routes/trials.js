@@ -16,7 +16,12 @@ router.post('/start', async (req, res) => {
     try {
         // Upsert: If already exists, update heartbeat and info
         await db.query(
-            'INSERT INTO trials (hwid, last_heartbeat, app_version, os_info) VALUES ($1, NOW(), $2, $3) ON CONFLICT (hwid) DO UPDATE SET last_heartbeat = NOW(), app_version = COALESCE($2, trials.app_version), os_info = COALESCE($3, trials.os_info)',
+            `INSERT INTO trials (hwid, last_heartbeat, app_version, os_info) 
+             VALUES ($1, NOW(), $2, $3) 
+             ON CONFLICT (hwid) DO UPDATE SET 
+                last_heartbeat = NOW(), 
+                app_version = CASE WHEN EXCLUDED.app_version IS NOT NULL AND EXCLUDED.app_version <> '' THEN EXCLUDED.app_version ELSE trials.app_version END, 
+                os_info = CASE WHEN EXCLUDED.os_info IS NOT NULL AND EXCLUDED.os_info <> '' THEN EXCLUDED.os_info ELSE trials.os_info END`,
             [hwid, version, os]
         );
         res.status(201).json({ success: true });
@@ -39,7 +44,11 @@ router.post('/heartbeat', async (req, res) => {
 
     try {
         const result = await db.query(
-            'UPDATE trials SET last_heartbeat = NOW(), app_version = COALESCE($2, app_version), os_info = COALESCE($3, os_info) WHERE hwid = $1 RETURNING id',
+            `UPDATE trials 
+             SET last_heartbeat = NOW(), 
+                 app_version = CASE WHEN $2 IS NOT NULL AND $2 <> '' THEN $2 ELSE app_version END,
+                 os_info = CASE WHEN $3 IS NOT NULL AND $3 <> '' THEN $3 ELSE os_info END 
+             WHERE hwid = $1 RETURNING id`,
             [hwid, version, os]
         );
 

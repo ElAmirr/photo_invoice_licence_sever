@@ -53,7 +53,11 @@ router.post('/', async (req, res) => {
             console.log(`[Heartbeat] Key ${key} seen again on ${hwid} (v${version || '?'})`);
             // Update last seen heartbeat even if already activated
             await db.query(
-                'UPDATE license_keys SET last_heartbeat = NOW(), app_version = COALESCE($2, app_version), os_info = COALESCE($3, os_info) WHERE key = $1',
+                `UPDATE license_keys 
+                 SET last_heartbeat = NOW(), 
+                     app_version = CASE WHEN $2 IS NOT NULL AND $2 <> '' THEN $2 ELSE app_version END,
+                     os_info = CASE WHEN $3 IS NOT NULL AND $3 <> '' THEN $3 ELSE os_info END 
+                 WHERE key = $1`,
                 [key, version, os]
             );
 
@@ -103,7 +107,11 @@ router.post('/heartbeat', async (req, res) => {
     try {
         console.log(`[Heartbeat] Manual heartbeat for ${key} on ${hwid} (v${version || '?'})`);
         const result = await db.query(
-            'UPDATE license_keys SET last_heartbeat = NOW(), app_version = COALESCE($3, app_version), os_info = COALESCE($4, os_info) WHERE key = $1 AND hwid = $2 RETURNING id, expires_at',
+            `UPDATE license_keys 
+             SET last_heartbeat = NOW(), 
+                 app_version = CASE WHEN $3 IS NOT NULL AND $3 <> '' THEN $3 ELSE app_version END,
+                 os_info = CASE WHEN $4 IS NOT NULL AND $4 <> '' THEN $4 ELSE os_info END 
+             WHERE key = $1 AND hwid = $2 RETURNING id, expires_at`,
             [key, hwid, version, os]
         );
 
