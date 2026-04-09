@@ -14,9 +14,9 @@ router.post('/start', async (req, res) => {
     }
 
     try {
-        // Upsert: If already exists, we just return success (doesn't change start date)
+        // Upsert: If already exists, update last_heartbeat (doesn't change start date)
         await db.query(
-            'INSERT INTO trials (hwid) VALUES ($1) ON CONFLICT (hwid) DO NOTHING',
+            'INSERT INTO trials (hwid, last_heartbeat) VALUES ($1, NOW()) ON CONFLICT (hwid) DO UPDATE SET last_heartbeat = NOW()',
             [hwid]
         );
         res.status(201).json({ success: true });

@@ -50,6 +50,13 @@ router.post('/', async (req, res) => {
 
         // 3. If already activated by the SAME HWID (idempotency)
         if (license.hwid === hwid) {
+            console.log(`[Heartbeat] Key ${key} seen again on ${hwid}`);
+            // Update last seen heartbeat even if already activated
+            await db.query(
+                'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1',
+                [key]
+            );
+
             return res.json({
                 success: true,
                 message: "Key already activated on this device.",
@@ -92,6 +99,7 @@ router.post('/heartbeat', async (req, res) => {
     }
 
     try {
+        console.log(`[Heartbeat] Manual heartbeat for ${key} on ${hwid}`);
         const result = await db.query(
             'UPDATE license_keys SET last_heartbeat = NOW() WHERE key = $1 AND hwid = $2 RETURNING id, expires_at',
             [key, hwid]

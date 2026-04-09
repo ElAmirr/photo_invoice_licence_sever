@@ -113,4 +113,20 @@ router.delete('/license/:id', isAdmin, async (req, res) => {
     }
 });
 
+/**
+ * @route   GET /api/admin/trials
+ * @desc    Fetch all trial machines from the database
+ */
+router.get('/trials', isAdmin, async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT id, hwid, started_at, last_heartbeat FROM trials ORDER BY started_at DESC'
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Fetch trials error:', err);
+        res.status(500).json({ error: "Failed to fetch trials" });
+    }
+});
+
 module.exports = router;
