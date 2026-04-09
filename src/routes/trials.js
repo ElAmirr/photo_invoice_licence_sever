@@ -7,17 +7,17 @@ const db = require('../db');
  * @desc    Register a new machine starting a free trial
  */
 router.post('/start', async (req, res) => {
-    const { hwid } = req.body;
+    const { hwid, version, os } = req.body;
 
     if (!hwid) {
         return res.status(400).json({ success: false, message: "HWID is required." });
     }
 
     try {
-        // Upsert: If already exists, update last_heartbeat (doesn't change start date)
+        // Upsert: If already exists, update heartbeat and info
         await db.query(
-            'INSERT INTO trials (hwid, last_heartbeat) VALUES ($1, NOW()) ON CONFLICT (hwid) DO UPDATE SET last_heartbeat = NOW()',
-            [hwid]
+            'INSERT INTO trials (hwid, last_heartbeat, app_version, os_info) VALUES ($1, NOW(), $2, $3) ON CONFLICT (hwid) DO UPDATE SET last_heartbeat = NOW(), app_version = COALESCE($2, trials.app_version), os_info = COALESCE($3, trials.os_info)',
+            [hwid, version, os]
         );
         res.status(201).json({ success: true });
     } catch (err) {
@@ -31,7 +31,7 @@ router.post('/start', async (req, res) => {
  * @desc    Update heartbeat for a trial machine
  */
 router.post('/heartbeat', async (req, res) => {
-    const { hwid } = req.body;
+    const { hwid, version, os } = req.body;
 
     if (!hwid) {
         return res.status(400).json({ success: false, message: "HWID is required." });
@@ -39,8 +39,8 @@ router.post('/heartbeat', async (req, res) => {
 
     try {
         const result = await db.query(
-            'UPDATE trials SET last_heartbeat = NOW() WHERE hwid = $1 RETURNING id',
-            [hwid]
+            'UPDATE trials SET last_heartbeat = NOW(), app_version = COALESCE($2, app_version), os_info = COALESCE($3, os_info) WHERE hwid = $1 RETURNING id',
+            [hwid, version, os]
         );
 
         if (result.rowCount === 0) {

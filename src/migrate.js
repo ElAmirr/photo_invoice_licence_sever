@@ -49,17 +49,31 @@ const migrate = async () => {
       started_at TIMESTAMP DEFAULT NOW(),
       last_heartbeat TIMESTAMP DEFAULT NULL
     );
+
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trials' AND column_name='app_version') THEN
+        ALTER TABLE trials ADD COLUMN app_version TEXT DEFAULT NULL;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trials' AND column_name='os_info') THEN
+        ALTER TABLE trials ADD COLUMN os_info TEXT DEFAULT NULL;
+      END IF;
+    END $$;
   `;
 
   try {
     console.log('Running database migrations...');
     await db.query(query);
     console.log('Migration successful: table "license_keys" is ready.');
-    process.exit(0);
   } catch (err) {
     console.error('Migration failed:', err);
-    process.exit(1);
+    // Don't exit process if we are running as part of the app
+    if (require.main === module) process.exit(1);
   }
 };
 
-migrate();
+if (require.main === module) {
+  migrate();
+}
+
+module.exports = migrate;

@@ -94,6 +94,8 @@ router.post('/', async (req, res) => {
 router.post('/heartbeat', async (req, res) => {
     const { key, hwid, version, os } = req.body;
 
+    console.log(`[Heartbeat Attempt] Key: ${key}, HWID: ${hwid}, Version: ${version || 'N/A'}, OS: ${os || 'N/A'}`);
+
     if (!key || !hwid) {
         return res.status(400).json({ success: false, message: "Key and HWID required." });
     }
