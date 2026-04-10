@@ -17,7 +17,7 @@ router.post('/start', async (req, res) => {
         // Upsert: If already exists, update heartbeat and info
         await db.query(
             `INSERT INTO trials (hwid, last_heartbeat, app_version, os_info) 
-             VALUES ($1, NOW(), $2, $3) 
+             VALUES ($1, NOW(), $2::text, $3::text) 
              ON CONFLICT (hwid) DO UPDATE SET 
                 last_heartbeat = NOW(), 
                 app_version = CASE WHEN EXCLUDED.app_version IS NOT NULL AND EXCLUDED.app_version <> '' THEN EXCLUDED.app_version ELSE trials.app_version END, 
@@ -46,8 +46,8 @@ router.post('/heartbeat', async (req, res) => {
         const result = await db.query(
             `UPDATE trials 
              SET last_heartbeat = NOW(), 
-                 app_version = CASE WHEN $2 IS NOT NULL AND $2 <> '' THEN $2 ELSE app_version END,
-                 os_info = CASE WHEN $3 IS NOT NULL AND $3 <> '' THEN $3 ELSE os_info END 
+                 app_version = CASE WHEN $2::text IS NOT NULL AND $2::text <> '' THEN $2::text ELSE app_version END,
+                 os_info = CASE WHEN $3::text IS NOT NULL AND $3::text <> '' THEN $3::text ELSE os_info END 
              WHERE hwid = $1 RETURNING id`,
             [hwid, version, os]
         );

@@ -55,8 +55,8 @@ router.post('/', async (req, res) => {
             await db.query(
                 `UPDATE license_keys 
                  SET last_heartbeat = NOW(), 
-                     app_version = CASE WHEN $2 IS NOT NULL AND $2 <> '' THEN $2 ELSE app_version END,
-                     os_info = CASE WHEN $3 IS NOT NULL AND $3 <> '' THEN $3 ELSE os_info END 
+                     app_version = CASE WHEN $2::text IS NOT NULL AND $2::text <> '' THEN $2::text ELSE app_version END,
+                     os_info = CASE WHEN $3::text IS NOT NULL AND $3::text <> '' THEN $3::text ELSE os_info END 
                  WHERE key = $1`,
                 [key, version, os]
             );
@@ -71,7 +71,7 @@ router.post('/', async (req, res) => {
 
         // 4. Activate key (bind to HWID)
         await db.query(
-            'UPDATE license_keys SET hwid = $1, activated_at = NOW(), last_heartbeat = NOW(), app_version = $3, os_info = $4 WHERE key = $2',
+            'UPDATE license_keys SET hwid = $1, activated_at = NOW(), last_heartbeat = NOW(), app_version = $3::text, os_info = $4::text WHERE key = $2',
             [hwid, key, version, os]
         );
 
@@ -109,8 +109,8 @@ router.post('/heartbeat', async (req, res) => {
         const result = await db.query(
             `UPDATE license_keys 
              SET last_heartbeat = NOW(), 
-                 app_version = CASE WHEN $3 IS NOT NULL AND $3 <> '' THEN $3 ELSE app_version END,
-                 os_info = CASE WHEN $4 IS NOT NULL AND $4 <> '' THEN $4 ELSE os_info END 
+                 app_version = CASE WHEN $3::text IS NOT NULL AND $3::text <> '' THEN $3::text ELSE app_version END,
+                 os_info = CASE WHEN $4::text IS NOT NULL AND $4 <> '' THEN $4::text ELSE os_info END 
              WHERE key = $1 AND hwid = $2 RETURNING id, expires_at`,
             [key, hwid, version, os]
         );
