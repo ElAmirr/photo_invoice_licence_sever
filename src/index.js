@@ -3,7 +3,8 @@ const cors = require('cors');
 require('dotenv').config();
 
 // Run database migrations on start
-require('./migrate');
+const migrate = require('./migrate');
+migrate();
 
 const app = express();
 app.use(cors({
