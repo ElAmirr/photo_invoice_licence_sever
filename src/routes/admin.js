@@ -144,4 +144,42 @@ router.get('/trials', isAdmin, async (req, res) => {
     }
 });
 
+/**
+ * @route   PUT /api/admin/license/:id/metadata
+ * @desc    Update customer and studio metadata for a license key
+ */
+router.put('/license/:id/metadata', isAdmin, async (req, res) => {
+    const { id } = req.params;
+    const {
+        customerName,
+        customerEmail,
+        studioName,
+        phone
+    } = req.body;
+
+    try {
+        const query = `
+            UPDATE license_keys 
+            SET customer_name = $1, 
+                customer_email = $2, 
+                studio_name = $3, 
+                phone = $4 
+            WHERE id = $5::integer 
+            RETURNING id
+        `;
+        const params = [customerName, customerEmail, studioName, phone, id];
+
+        const result = await db.query(query, params);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: "License key not found" });
+        }
+
+        res.json({ success: true, message: "Metadata updated successfully" });
+    } catch (err) {
+        console.error('Update metadata error:', err);
+        res.status(500).json({ error: "Failed to update metadata" });
+    }
+});
+
 module.exports = router;

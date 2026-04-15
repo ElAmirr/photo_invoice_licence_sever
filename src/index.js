@@ -9,7 +9,7 @@ migrate();
 const app = express();
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'x-admin-token']
 }));
 const PORT = process.env.PORT || 3000;
