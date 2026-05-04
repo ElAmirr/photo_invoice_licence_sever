@@ -33,28 +33,36 @@ router.post('/generate-key', isAdmin, async (req, res) => {
     const newKey = uuidv4();
 
     try {
-        const query = `
-            INSERT INTO license_keys (
-                key, 
-                expires_at, 
-                customer_name, 
-                customer_email, 
-                studio_name, 
-                phone
-            ) VALUES (
-                $1, 
-                CASE WHEN $2::integer IS NOT NULL THEN NOW() + ($2 || ' days')::interval ELSE NULL END, 
-                $3, $4, $5, $6
-            )
-        `;
-        const params = [
-            newKey,
-            durationDays || null,
-            customerName || null,
-            customerEmail || null,
-            studioName || null,
-            phone || null
-        ];
+        let query, params;
+
+        if (durationDays) {
+            // Timed key: set expires_at to NOW() + durationDays
+            query = `
+                INSERT INTO license_keys (key, expires_at, customer_name, customer_email, studio_name, phone)
+                VALUES ($1, NOW() + ($2 * INTERVAL '1 day'), $3, $4, $5, $6)
+            `;
+            params = [
+                newKey,
+                parseInt(durationDays),
+                customerName || null,
+                customerEmail || null,
+                studioName || null,
+                phone || null
+            ];
+        } else {
+            // Lifetime key: expires_at stays NULL
+            query = `
+                INSERT INTO license_keys (key, expires_at, customer_name, customer_email, studio_name, phone)
+                VALUES ($1, NULL, $2, $3, $4, $5)
+            `;
+            params = [
+                newKey,
+                customerName || null,
+                customerEmail || null,
+                studioName || null,
+                phone || null
+            ];
+        }
 
         await db.query(query, params);
 
