@@ -16,6 +16,7 @@ const isAdmin = (req, res, next) => {
     next();
 };
 
+
 /**
  * @route   POST /api/admin/generate-key
  * @desc    Generate a new unique license key and store it in the DB
