@@ -1,6 +1,12 @@
-const db = require('./db');
+const { Client } = require('pg');
+require('dotenv').config();
 
 const migrate = async () => {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+
   const query = `
     CREATE TABLE IF NOT EXISTS license_keys (
       id SERIAL PRIMARY KEY,
@@ -62,18 +68,19 @@ const migrate = async () => {
   `;
 
   try {
+    console.log('Connecting to database...');
+    await client.connect();
     console.log('Running database migrations...');
-    await db.query(query);
-    console.log('Migration successful: table "license_keys" is ready.');
+    await client.query(query);
+    console.log('Migration successful: all tables are ready.');
   } catch (err) {
-    console.error('Migration failed:', err);
-    // Don't exit process if we are running as part of the app
-    if (require.main === module) process.exit(1);
+    console.error('Migration failed:', err.message);
+    process.exitCode = 1;
+  } finally {
+    // Always close the connection cleanly so the process exits
+    await client.end();
+    console.log('Database connection closed.');
   }
 };
 
-if (require.main === module) {
-  migrate();
-}
-
-module.exports = migrate;
+migrate();
