@@ -2,9 +2,15 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// Run database migrations on start
+// Run database migrations on start (non-fatal)
 const migrate = require('./migrate');
-migrate();
+(async () => {
+    try {
+        await migrate();
+    } catch (err) {
+        console.error('Startup migration failed (server will continue):', err.message);
+    }
+})();
 
 const app = express();
 app.use(cors({
