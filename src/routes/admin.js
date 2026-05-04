@@ -47,7 +47,14 @@ router.post('/generate-key', isAdmin, async (req, res) => {
                 $3, $4, $5, $6
             )
         `;
-        const params = [newKey, durationDays || null, customerName, customerEmail, studioName, phone];
+        const params = [
+            newKey,
+            durationDays || null,
+            customerName || null,
+            customerEmail || null,
+            studioName || null,
+            phone || null
+        ];
 
         await db.query(query, params);
 
