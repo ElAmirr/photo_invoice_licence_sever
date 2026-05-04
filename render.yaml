@@ -8,7 +8,7 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: shootix_db
+          name: shootix_db2
           property: connectionString
       - key: ADMIN_SECRET
         generateValue: true
