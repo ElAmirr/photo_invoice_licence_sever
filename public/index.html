@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>License & Access Key Management Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              photo: '#9333EA', // Shootix Purple
+              yt: '#F59E0B',    // Vidos Amber
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 min-h-screen flex flex-col">
+
+  <!-- AUTH OVERLAY MODAL (Shown when no token) -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md hidden">
+    <div class="bg-[#131b2e] border border-slate-800 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl relative">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-amber-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-purple-500/20">
+        <i data-lucide="shield-lock" class="w-7 h-7 text-white"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-center text-white mb-2">Admin Dashboard Access</h2>
+      <p class="text-xs text-slate-400 text-center mb-6">Enter your <code class="text-purple-400 bg-purple-950/60 px-1.5 py-0.5 rounded">ADMIN_SECRET</code> token to access license management.</p>
+      
+      <form id="authForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Admin Token</label>
+          <div class="relative">
+            <input type="password" id="adminTokenInput" required placeholder="Enter token..." 
+                   class="w-full bg-[#0a0f1d] border border-slate-700 focus:border-purple-500 rounded-xl px-4 py-3 text-sm text-white outline-none font-mono transition-colors">
+            <button type="button" onclick="togglePasswordVisibility('adminTokenInput')" class="absolute right-3 top-3 text-slate-400 hover:text-white">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+        <p id="authError" class="text-xs text-rose-400 hidden"></p>
+        <button type="submit" class="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-bold py-3 px-4 rounded-xl text-sm transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2">
+          <span>Authenticate & Connect</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- NAVIGATION HEADER -->
+  <header class="border-b border-slate-800/80 bg-[#0e1424]/90 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-amber-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <i data-lucide="key" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-black tracking-tight text-white">License Central</h1>
+            <span class="text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full">Multi-App</span>
+          </div>
+          <p class="text-xs text-slate-400">Manage Shootix & YouTube Downloader access keys</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="openCreateModal()" class="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-purple-600/25 active:scale-95 transition-all">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Create Access Key</span>
+        </button>
+        <button onclick="handleLogout()" title="Change Admin Token" class="p-2 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+
+    <!-- APP SELECTOR TABS -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div class="flex items-center p-1 bg-[#131b2e] border border-slate-800 rounded-2xl gap-1">
+        <button onclick="setActiveApp('all')" id="tab-all" class="app-tab px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-purple-600 to-amber-500 text-white shadow">
+          <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+          <span>All Apps</span>
+          <span id="badgeCountAll" class="bg-black/30 text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+        </button>
+        <button onclick="setActiveApp('photo_invoice')" id="tab-photo_invoice" class="app-tab px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-2">
+          <i data-lucide="camera" class="w-3.5 h-3.5 text-purple-400"></i>
+          <span>Photo Invoice (Shootix)</span>
+          <span id="badgeCountPhoto" class="bg-purple-900/50 text-purple-300 text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+        </button>
+        <button onclick="setActiveApp('youtube_video_downloader')" id="tab-youtube_video_downloader" class="app-tab px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-2">
+          <i data-lucide="video" class="w-3.5 h-3.5 text-amber-400"></i>
+          <span>YouTube Downloader (Vidos)</span>
+          <span id="badgeCountYt" class="bg-amber-900/50 text-amber-300 text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+        </button>
+      </div>
+
+      <!-- Navigation Section View Toggle (Licenses vs Trials) -->
+      <div class="flex items-center gap-2">
+        <button onclick="setView('licenses')" id="viewBtnLicenses" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-white border border-slate-700 flex items-center gap-1.5 transition-colors">
+          <i data-lucide="key" class="w-3.5 h-3.5"></i>
+          <span>Licenses</span>
+        </button>
+        <button onclick="setView('trials')" id="viewBtnTrials" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white border border-transparent hover:border-slate-800 flex items-center gap-1.5 transition-colors">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+          <span>Active Trials</span>
+        </button>
+        <button onclick="refreshData()" title="Reload data" class="p-2 rounded-xl border border-slate-800 bg-[#131b2e] hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+          <i data-lucide="refresh-cw" id="refreshIcon" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- METRICS CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-[#131b2e] border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
+          <span>Total Licenses</span>
+          <i data-lucide="key" class="w-4 h-4 text-purple-400"></i>
+        </div>
+        <div id="statTotal" class="text-2xl sm:text-3xl font-black text-white">0</div>
+        <div class="text-[11px] text-slate-500 mt-1">Generated keys</div>
+      </div>
+
+      <div class="bg-[#131b2e] border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
+          <span>Active Bound</span>
+          <i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div id="statActive" class="text-2xl sm:text-3xl font-black text-emerald-400">0</div>
+        <div class="text-[11px] text-slate-500 mt-1">Bound to hardware (HWID)</div>
+      </div>
+
+      <div class="bg-[#131b2e] border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
+          <span>Unused / Available</span>
+          <i data-lucide="sparkles" class="w-4 h-4 text-blue-400"></i>
+        </div>
+        <div id="statAvailable" class="text-2xl sm:text-3xl font-black text-blue-400">0</div>
+        <div class="text-[11px] text-slate-500 mt-1">Awaiting activation</div>
+      </div>
+
+      <div class="bg-[#131b2e] border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-medium mb-2">
+          <span>Expired</span>
+          <i data-lucide="calendar-x" class="w-4 h-4 text-rose-400"></i>
+        </div>
+        <div id="statExpired" class="text-2xl sm:text-3xl font-black text-rose-400">0</div>
+        <div class="text-[11px] text-slate-500 mt-1">Past expiration date</div>
+      </div>
+    </div>
+
+    <!-- LICENSES VIEW -->
+    <div id="licensesSection" class="space-y-4">
+      <!-- Search & Filters -->
+      <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div class="relative flex-1 max-w-md">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-500"></i>
+          <input type="text" id="searchInput" placeholder="Search by key, customer, studio, HWID..." 
+                 oninput="renderLicenses()"
+                 class="w-full bg-[#131b2e] border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-purple-500">
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="statusFilter" onchange="renderLicenses()" class="bg-[#131b2e] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 outline-none focus:border-purple-500">
+            <option value="all">All Statuses</option>
+            <option value="active">Active (Bound)</option>
+            <option value="available">Available (Unbound)</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Licenses Table Card -->
+      <div class="bg-[#131b2e] border border-slate-800/80 rounded-3xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 bg-[#0f172a]/60 text-[11px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                <th class="py-3.5 px-4">Application</th>
+                <th class="py-3.5 px-4">License Key</th>
+                <th class="py-3.5 px-4">Customer & Studio</th>
+                <th class="py-3.5 px-4">HWID Binding</th>
+                <th class="py-3.5 px-4">Plan / Expiry</th>
+                <th class="py-3.5 px-4">Last Activity</th>
+                <th class="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="licensesTableBody" class="divide-y divide-slate-800/60 text-xs">
+              <!-- Dynamically Populated -->
+              <tr>
+                <td colspan="7" class="py-12 text-center text-slate-500">Loading licenses...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRIALS VIEW (Hidden by default) -->
+    <div id="trialsSection" class="space-y-4 hidden">
+      <div class="bg-[#131b2e] border border-slate-800/80 rounded-3xl overflow-hidden shadow-xl">
+        <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-white">Trial Devices Registered</h3>
+            <p class="text-xs text-slate-400">Hardware IDs that initiated a trial on either application.</p>
+          </div>
+          <span id="trialsCountBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full font-bold">0 trials</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 bg-[#0f172a]/60 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <th class="py-3.5 px-4">App</th>
+                <th class="py-3.5 px-4">Hardware ID (HWID)</th>
+                <th class="py-3.5 px-4">Version & OS</th>
+                <th class="py-3.5 px-4">Trial Started</th>
+                <th class="py-3.5 px-4">Last Heartbeat</th>
+              </tr>
+            </thead>
+            <tbody id="trialsTableBody" class="divide-y divide-slate-800/60 text-xs">
+              <tr>
+                <td colspan="5" class="py-12 text-center text-slate-500">Loading trials...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- CREATE LICENSE MODAL -->
+  <div id="createModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md hidden">
+    <div class="bg-[#131b2e] border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full mx-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeCreateModal()" class="absolute right-5 top-5 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-400 flex items-center justify-center">
+          <i data-lucide="key-round" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Generate Access Key</h3>
+          <p class="text-xs text-slate-400">Create a new license key for Photo Invoice or YouTube Downloader</p>
+        </div>
+      </div>
+
+      <form id="createLicenseForm" onsubmit="handleCreateLicense(event)" class="space-y-4">
+        <!-- Target Application -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Target Application *</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="newLicenseApp" value="photo_invoice" class="peer sr-only" checked>
+              <div class="p-3 rounded-xl border border-slate-700 bg-slate-900/50 peer-checked:border-purple-500 peer-checked:bg-purple-950/30 transition-all flex items-center gap-2">
+                <i data-lucide="camera" class="w-4 h-4 text-purple-400"></i>
+                <div>
+                  <div class="text-xs font-bold text-white">Photo Invoice</div>
+                  <div class="text-[10px] text-slate-400">Shootix Studio</div>
+                </div>
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="newLicenseApp" value="youtube_video_downloader" class="peer sr-only">
+              <div class="p-3 rounded-xl border border-slate-700 bg-slate-900/50 peer-checked:border-amber-500 peer-checked:bg-amber-950/30 transition-all flex items-center gap-2">
+                <i data-lucide="video" class="w-4 h-4 text-amber-400"></i>
+                <div>
+                  <div class="text-xs font-bold text-white">YouTube Downloader</div>
+                  <div class="text-[10px] text-slate-400">Vidos / TubeFlow</div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Plan / Duration -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">License Duration *</label>
+          <select id="durationSelect" onchange="handleDurationChange(this.value)" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-purple-500">
+            <option value="">Lifetime (No Expiry)</option>
+            <option value="7">7 Days Trial</option>
+            <option value="30">30 Days (1 Month)</option>
+            <option value="90">90 Days (3 Months)</option>
+            <option value="365">365 Days (1 Year)</option>
+            <option value="custom">Custom Days...</option>
+          </select>
+        </div>
+
+        <div id="customDurationContainer" class="hidden">
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Custom Duration in Days</label>
+          <input type="number" id="customDaysInput" min="1" placeholder="e.g. 45" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-purple-500">
+        </div>
+
+        <!-- Customer Metadata -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Customer Name</label>
+            <input type="text" id="custName" placeholder="Amir Ben..." class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+            <input type="email" id="custEmail" placeholder="client@example.com" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Studio / Company Name</label>
+            <input type="text" id="custStudio" placeholder="Studio Luxe" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Phone</label>
+            <input type="text" id="custPhone" placeholder="+216 ..." class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div class="pt-4 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeCreateModal()" class="px-4 py-2.5 rounded-xl border border-slate-700 text-xs text-slate-300 hover:bg-slate-800 transition-colors">
+            Cancel
+          </button>
+          <button type="submit" id="btnSubmitGenerate" class="bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Generate Key</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- KEY CREATED SUCCESS MODAL -->
+  <div id="keyCreatedModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md hidden">
+    <div class="bg-[#131b2e] border border-slate-800 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl text-center relative">
+      <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-bold text-white mb-1">License Key Created!</h3>
+      <p id="createdAppBadge" class="text-xs text-slate-400 mb-4">Ready to distribute</p>
+
+      <div class="bg-[#0a0f1d] border border-slate-700 rounded-2xl p-4 mb-5 text-left">
+        <div class="text-[10px] uppercase font-bold text-slate-400 mb-1">License Access Key</div>
+        <div id="newKeyValue" class="font-mono text-sm text-purple-300 font-bold break-all select-all"></div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="copyCreatedKey()" id="btnCopyCreatedKey" class="flex-1 bg-gradient-to-r from-purple-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition-all">
+          <i data-lucide="copy" class="w-4 h-4"></i>
+          <span id="copyBtnText">Copy License Key</span>
+        </button>
+        <button onclick="closeCreatedModal()" class="px-4 py-2.5 rounded-xl border border-slate-700 text-xs text-slate-300 hover:bg-slate-800">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT METADATA MODAL -->
+  <div id="editModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md hidden">
+    <div class="bg-[#131b2e] border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full mx-4 shadow-2xl relative">
+      <button onclick="closeEditModal()" class="absolute right-5 top-5 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h3 class="text-lg font-bold text-white mb-1">Edit License Metadata</h3>
+      <p id="editKeyDisplay" class="font-mono text-xs text-purple-400 mb-4 truncate"></p>
+
+      <form id="editForm" onsubmit="handleSaveEdit(event)" class="space-y-3">
+        <input type="hidden" id="editLicenseId">
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Application</label>
+          <select id="editApp" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+            <option value="photo_invoice">Photo Invoice (Shootix)</option>
+            <option value="youtube_video_downloader">YouTube Downloader (Vidos)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Customer Name</label>
+          <input type="text" id="editCustomerName" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Customer Email</label>
+          <input type="email" id="editCustomerEmail" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Studio / Company Name</label>
+          <input type="text" id="editStudioName" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Phone</label>
+          <input type="text" id="editPhone" class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+        </div>
+
+        <div class="pt-4 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl border border-slate-700 text-xs text-slate-300 hover:bg-slate-800">
+            Cancel
+          </button>
+          <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2 rounded-xl text-xs">
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State
+    let adminToken = localStorage.getItem('license_admin_token') || '';
+    let currentAppFilter = 'all'; // 'all' | 'photo_invoice' | 'youtube_video_downloader'
+    let currentView = 'licenses'; // 'licenses' | 'trials'
+    let allLicenses = [];
+    let allTrials = [];
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      if (!adminToken) {
+        showAuthModal();
+      } else {
+        loadData();
+      }
+
+      document.getElementById('authForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const token = document.getElementById('adminTokenInput').value.trim();
+        if (token) {
+          adminToken = token;
+          localStorage.setItem('license_admin_token', token);
+          hideAuthModal();
+          loadData();
+        }
+      });
+    });
+
+    function showAuthModal() {
+      document.getElementById('authModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('adminTokenInput').focus(), 100);
+    }
+
+    function hideAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+      document.getElementById('authError').classList.add('hidden');
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('license_admin_token');
+      adminToken = '';
+      showAuthModal();
+    }
+
+    function togglePasswordVisibility(inputId) {
+      const el = document.getElementById(inputId);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    // App Switcher
+    function setActiveApp(app) {
+      currentAppFilter = app;
+
+      // Update Tab Styles
+      ['all', 'photo_invoice', 'youtube_video_downloader'].forEach(key => {
+        const btn = document.getElementById(`tab-${key}`);
+        if (key === app) {
+          btn.className = 'app-tab px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-gradient-to-r from-purple-600 to-amber-500 text-white shadow';
+        } else {
+          btn.className = 'app-tab px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-all flex items-center gap-2';
+        }
+      });
+
+      renderLicenses();
+      renderTrials();
+      updateMetrics();
+    }
+
+    // Section Switcher
+    function setView(view) {
+      currentView = view;
+      const licSec = document.getElementById('licensesSection');
+      const triSec = document.getElementById('trialsSection');
+      const btnLic = document.getElementById('viewBtnLicenses');
+      const btnTri = document.getElementById('viewBtnTrials');
+
+      if (view === 'licenses') {
+        licSec.classList.remove('hidden');
+        triSec.classList.add('hidden');
+        btnLic.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-white border border-slate-700 flex items-center gap-1.5 transition-colors';
+        btnTri.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white border border-transparent hover:border-slate-800 flex items-center gap-1.5 transition-colors';
+      } else {
+        licSec.classList.add('hidden');
+        triSec.classList.remove('hidden');
+        btnTri.className = 'px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 text-white border border-slate-700 flex items-center gap-1.5 transition-colors';
+        btnLic.className = 'px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white border border-transparent hover:border-slate-800 flex items-center gap-1.5 transition-colors';
+      }
+      lucide.createIcons();
+    }
+
+    // API Helper
+    async function apiRequest(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-admin-token': adminToken,
+        ...(options.headers || {})
+      };
+
+      try {
+        const response = await fetch(endpoint, { ...options, headers });
+        if (response.status === 401) {
+          showAuthModal();
+          document.getElementById('authError').textContent = 'Unauthorized. Invalid admin token.';
+          document.getElementById('authError').classList.remove('hidden');
+          throw new Error('Unauthorized');
+        }
+        return await response.json();
+      } catch (err) {
+        console.error('API Error:', err);
+        throw err;
+      }
+    }
+
+    // Fetch Licenses & Trials
+    async function loadData() {
+      const refreshIcon = document.getElementById('refreshIcon');
+      refreshIcon?.classList.add('animate-spin');
+
+      try {
+        const [licenses, trials] = await Promise.all([
+          apiRequest('/api/admin/licenses'),
+          apiRequest('/api/admin/trials')
+        ]);
+
+        allLicenses = Array.isArray(licenses) ? licenses : [];
+        allTrials = Array.isArray(trials) ? trials : [];
+
+        // Update badge counts
+        const photoCount = allLicenses.filter(l => (l.app || 'photo_invoice') === 'photo_invoice').length;
+        const ytCount = allLicenses.filter(l => l.app === 'youtube_video_downloader').length;
+        document.getElementById('badgeCountAll').textContent = allLicenses.length;
+        document.getElementById('badgeCountPhoto').textContent = photoCount;
+        document.getElementById('badgeCountYt').textContent = ytCount;
+        document.getElementById('trialsCountBadge').textContent = `${allTrials.length} devices`;
+
+        updateMetrics();
+        renderLicenses();
+        renderTrials();
+      } catch (e) {
+        if (e.message !== 'Unauthorized') {
+          showToast('Failed to load data from server', 'error');
+        }
+      } finally {
+        setTimeout(() => refreshIcon?.classList.remove('animate-spin'), 400);
+      }
+    }
+
+    function refreshData() {
+      loadData();
+    }
+
+    function updateMetrics() {
+      const filtered = getFilteredLicenses();
+      const now = new Date();
+
+      const total = filtered.length;
+      const active = filtered.filter(l => l.hwid).length;
+      const available = filtered.filter(l => !l.hwid).length;
+      const expired = filtered.filter(l => l.expires_at && new Date(l.expires_at) < now).length;
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statActive').textContent = active;
+      document.getElementById('statAvailable').textContent = available;
+      document.getElementById('statExpired').textContent = expired;
+    }
+
+    function getFilteredLicenses() {
+      return allLicenses.filter(l => {
+        const app = l.app || 'photo_invoice';
+        if (currentAppFilter !== 'all' && app !== currentAppFilter) return false;
+        return true;
+      });
+    }
+
+    function renderLicenses() {
+      const tbody = document.getElementById('licensesTableBody');
+      const searchQuery = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+      const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+      const now = new Date();
+
+      let items = getFilteredLicenses();
+
+      // Search Filter
+      if (searchQuery) {
+        items = items.filter(l => {
+          return (l.key && l.key.toLowerCase().includes(searchQuery)) ||
+                 (l.customer_name && l.customer_name.toLowerCase().includes(searchQuery)) ||
+                 (l.customer_email && l.customer_email.toLowerCase().includes(searchQuery)) ||
+                 (l.studio_name && l.studio_name.toLowerCase().includes(searchQuery)) ||
+                 (l.phone && l.phone.toLowerCase().includes(searchQuery)) ||
+                 (l.hwid && l.hwid.toLowerCase().includes(searchQuery));
+        });
+      }
+
+      // Status Filter
+      if (statusFilter !== 'all') {
+        items = items.filter(l => {
+          const isExpired = l.expires_at && new Date(l.expires_at) < now;
+          if (statusFilter === 'expired') return isExpired;
+          if (isExpired) return false;
+          if (statusFilter === 'active') return !!l.hwid;
+          if (statusFilter === 'available') return !l.hwid;
+          return true;
+        });
+      }
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-12 text-center text-slate-500">
+              <i data-lucide="key-round" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+              <div>No license keys found matching your filter</div>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      tbody.innerHTML = items.map(l => {
+        const app = l.app || 'photo_invoice';
+        const isYt = app === 'youtube_video_downloader';
+        const isExpired = l.expires_at && new Date(l.expires_at) < now;
+        
+        // App Badge
+        const appBadge = isYt ? 
+          `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">
+             <i data-lucide="video" class="w-3 h-3"></i> Vidos (YT)
+           </span>` :
+          `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px] font-bold">
+             <i data-lucide="camera" class="w-3 h-3"></i> Shootix (Photo)
+           </span>`;
+
+        // Status Badge
+        let statusBadge;
+        if (isExpired) {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 text-[10px] font-bold">Expired</span>`;
+        } else if (l.hwid) {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">● Active</span>`;
+        } else {
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-300 border border-blue-500/30 text-[10px] font-bold">○ Available</span>`;
+        }
+
+        // Expiry text
+        let expiryText = '<span class="text-emerald-400 font-semibold">Lifetime</span>';
+        if (l.expires_at) {
+          const expDate = new Date(l.expires_at);
+          expiryText = `<span class="${isExpired ? 'text-rose-400 font-bold' : 'text-slate-300'}">${expDate.toLocaleDateString()}</span>`;
+        }
+
+        // Heartbeat / Version
+        let heartbeatText = '<span class="text-slate-500">Never</span>';
+        if (l.last_heartbeat) {
+          const hbDate = new Date(l.last_heartbeat);
+          heartbeatText = `<div class="text-slate-300">${hbDate.toLocaleDateString()} ${hbDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>`;
+          if (l.app_version) {
+            heartbeatText += `<div class="text-[10px] text-slate-500">v${l.app_version} ${l.os_info ? `(${l.os_info})` : ''}</div>`;
+          }
+        }
+
+        // HWID Display
+        let hwidDisplay = '<span class="text-slate-500 italic">Not bound yet</span>';
+        if (l.hwid) {
+          hwidDisplay = `
+            <div class="flex items-center gap-1.5">
+              <code class="font-mono text-[11px] text-slate-300 bg-slate-900 px-1.5 py-0.5 rounded max-w-[130px] truncate" title="${l.hwid}">${l.hwid}</code>
+              <button onclick="copyToClipboard('${l.hwid}', 'HWID copied!')" title="Copy HWID" class="text-slate-400 hover:text-white">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+              </button>
+            </div>
+          `;
+        }
+
+        // Customer details
+        const customerName = l.customer_name || '—';
+        const studio = l.studio_name ? `<div class="text-[11px] text-purple-400 font-medium">${l.studio_name}</div>` : '';
+        const email = l.customer_email ? `<div class="text-[10px] text-slate-500">${l.customer_email}</div>` : '';
+        const phone = l.phone ? `<div class="text-[10px] text-slate-500">${l.phone}</div>` : '';
+
+        return `
+          <tr class="hover:bg-slate-800/30 transition-colors">
+            <td class="py-3.5 px-4">${appBadge}</td>
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs font-semibold text-white bg-black/40 px-2 py-1 rounded border border-slate-800 select-all">${l.key}</span>
+                <button onclick="copyToClipboard('${l.key}', 'License Key copied!')" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white" title="Copy Key">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="font-medium text-slate-200">${customerName}</div>
+              ${studio}
+              ${email}
+              ${phone}
+            </td>
+            <td class="py-3.5 px-4">
+              ${hwidDisplay}
+            </td>
+            <td class="py-3.5 px-4">
+              <div>${statusBadge}</div>
+              <div class="mt-1 text-[11px]">${expiryText}</div>
+            </td>
+            <td class="py-3.5 px-4">
+              ${heartbeatText}
+            </td>
+            <td class="py-3.5 px-4 text-right">
+              <div class="flex items-center justify-end gap-1">
+                ${l.hwid ? `
+                  <button onclick="handleResetHwid('${l.key}')" title="Reset HWID (unassign machine)" class="p-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-amber-500/20 hover:border-amber-500 text-slate-300 hover:text-amber-300 transition-colors">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
+                <button onclick="openEditModal(${l.id})" title="Edit customer info" class="p-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-purple-500/20 hover:border-purple-500 text-slate-300 hover:text-purple-300 transition-colors">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="handleDeleteLicense(${l.id}, '${l.key}')" title="Delete Key" class="p-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-rose-500/20 hover:border-rose-500 text-slate-300 hover:text-rose-400 transition-colors">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function renderTrials() {
+      const tbody = document.getElementById('trialsTableBody');
+      let items = allTrials;
+
+      if (currentAppFilter !== 'all') {
+        items = items.filter(t => (t.app || 'photo_invoice') === currentAppFilter);
+      }
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-12 text-center text-slate-500">
+              <i data-lucide="clock" class="w-8 h-8 mx-auto mb-2 opacity-30"></i>
+              <div>No trial machines recorded for this app.</div>
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      tbody.innerHTML = items.map(t => {
+        const app = t.app || 'photo_invoice';
+        const isYt = app === 'youtube_video_downloader';
+        const appBadge = isYt ? 
+          `<span class="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold">Vidos</span>` :
+          `<span class="px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[10px] font-bold">Shootix</span>`;
+
+        return `
+          <tr class="hover:bg-slate-800/30 transition-colors">
+            <td class="py-3 px-4">${appBadge}</td>
+            <td class="py-3 px-4">
+              <code class="font-mono text-xs text-slate-300 bg-slate-900 px-2 py-1 rounded border border-slate-800 select-all">${t.hwid}</code>
+            </td>
+            <td class="py-3 px-4 text-slate-400">
+              ${t.app_version ? `v${t.app_version}` : '—'} ${t.os_info ? `• ${t.os_info}` : ''}
+            </td>
+            <td class="py-3 px-4 text-slate-300">
+              ${t.started_at ? new Date(t.started_at).toLocaleString() : '—'}
+            </td>
+            <td class="py-3 px-4 text-slate-300">
+              ${t.last_heartbeat ? new Date(t.last_heartbeat).toLocaleString() : '—'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // CREATE MODAL LOGIC
+    function openCreateModal() {
+      // Pre-select app based on current filter if specific
+      if (currentAppFilter === 'youtube_video_downloader') {
+        document.querySelector('input[name="newLicenseApp"][value="youtube_video_downloader"]').checked = true;
+      } else {
+        document.querySelector('input[name="newLicenseApp"][value="photo_invoice"]').checked = true;
+      }
+      document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.add('hidden');
+      document.getElementById('createLicenseForm').reset();
+      document.getElementById('customDurationContainer').classList.add('hidden');
+    }
+
+    function handleDurationChange(val) {
+      const container = document.getElementById('customDurationContainer');
+      if (val === 'custom') {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    async function handleCreateLicense(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitGenerate');
+      btn.disabled = true;
+      btn.classList.add('opacity-70');
+
+      const app = document.querySelector('input[name="newLicenseApp"]:checked').value;
+      const durationSelect = document.getElementById('durationSelect').value;
+      let durationDays = null;
+
+      if (durationSelect === 'custom') {
+        const customDays = parseInt(document.getElementById('customDaysInput').value);
+        if (customDays > 0) durationDays = customDays;
+      } else if (durationSelect) {
+        durationDays = parseInt(durationSelect);
+      }
+
+      const payload = {
+        app,
+        durationDays,
+        customerName: document.getElementById('custName').value.trim(),
+        customerEmail: document.getElementById('custEmail').value.trim(),
+        studioName: document.getElementById('custStudio').value.trim(),
+        phone: document.getElementById('custPhone').value.trim(),
+      };
+
+      try {
+        const res = await apiRequest('/api/admin/generate-key', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (res.success && res.key) {
+          closeCreateModal();
+          showKeyCreatedModal(res.key, app);
+          await loadData();
+          showToast('License key generated successfully!', 'success');
+        } else {
+          showToast(res.error || 'Failed to generate key', 'error');
+        }
+      } catch (err) {
+        showToast('Server error while generating key', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-70');
+      }
+    }
+
+    function showKeyCreatedModal(key, app) {
+      document.getElementById('newKeyValue').textContent = key;
+      const appName = app === 'youtube_video_downloader' ? 'YouTube Video Downloader (Vidos)' : 'Photo Invoice (Shootix)';
+      document.getElementById('createdAppBadge').textContent = `Created for ${appName}`;
+      document.getElementById('keyCreatedModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeCreatedModal() {
+      document.getElementById('keyCreatedModal').classList.add('hidden');
+    }
+
+    function copyCreatedKey() {
+      const key = document.getElementById('newKeyValue').textContent;
+      copyToClipboard(key, 'License key copied!');
+      const btnText = document.getElementById('copyBtnText');
+      btnText.textContent = 'Copied!';
+      setTimeout(() => btnText.textContent = 'Copy License Key', 2000);
+    }
+
+    // ACTIONS
+    async function handleResetHwid(key) {
+      if (!confirm(`Are you sure you want to reset HWID binding for this key? The user will be able to activate it on a new machine.`)) return;
+
+      try {
+        const res = await apiRequest('/api/admin/reset-hwid', {
+          method: 'POST',
+          body: JSON.stringify({ key })
+        });
+        if (res.success) {
+          showToast('HWID binding reset successfully', 'success');
+          loadData();
+        } else {
+          showToast(res.error || 'Failed to reset HWID', 'error');
+        }
+      } catch (err) {
+        showToast('Error resetting HWID', 'error');
+      }
+    }
+
+    async function handleDeleteLicense(id, key) {
+      if (!confirm(`Are you sure you want to delete this license key?\nKey: ${key}\nThis action is irreversible!`)) return;
+
+      try {
+        const res = await apiRequest(`/api/admin/license/${id}`, {
+          method: 'DELETE'
+        });
+        if (res.success) {
+          showToast('License key deleted', 'success');
+          loadData();
+        } else {
+          showToast(res.error || 'Failed to delete license', 'error');
+        }
+      } catch (err) {
+        showToast('Error deleting license', 'error');
+      }
+    }
+
+    // EDIT MODAL
+    function openEditModal(id) {
+      const license = allLicenses.find(l => l.id === id);
+      if (!license) return;
+
+      document.getElementById('editLicenseId').value = license.id;
+      document.getElementById('editKeyDisplay').textContent = license.key;
+      document.getElementById('editApp').value = license.app || 'photo_invoice';
+      document.getElementById('editCustomerName').value = license.customer_name || '';
+      document.getElementById('editCustomerEmail').value = license.customer_email || '';
+      document.getElementById('editStudioName').value = license.studio_name || '';
+      document.getElementById('editPhone').value = license.phone || '';
+
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.add('hidden');
+    }
+
+    async function handleSaveEdit(e) {
+      e.preventDefault();
+      const id = document.getElementById('editLicenseId').value;
+      const payload = {
+        app: document.getElementById('editApp').value,
+        customerName: document.getElementById('editCustomerName').value.trim(),
+        customerEmail: document.getElementById('editCustomerEmail').value.trim(),
+        studioName: document.getElementById('editStudioName').value.trim(),
+        phone: document.getElementById('editPhone').value.trim(),
+      };
+
+      try {
+        const res = await apiRequest(`/api/admin/license/${id}/metadata`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+
+        if (res.success) {
+          closeEditModal();
+          showToast('License metadata updated!', 'success');
+          loadData();
+        } else {
+          showToast(res.error || 'Update failed', 'error');
+        }
+      } catch (err) {
+        showToast('Error saving changes', 'error');
+      }
+    }
+
+    // Clipboard & Toast
+    function copyToClipboard(text, msg = 'Copied to clipboard!') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(msg, 'success');
+      }).catch(() => {
+        showToast('Failed to copy', 'error');
+      });
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const bgColor = type === 'success' ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200' :
+                      type === 'error' ? 'bg-rose-950/90 border-rose-500/50 text-rose-200' :
+                      'bg-slate-900/90 border-slate-700 text-slate-200';
+
+      toast.className = `p-3.5 px-4 rounded-xl border text-xs font-semibold shadow-2xl backdrop-blur-md transition-all duration-300 pointer-events-auto flex items-center gap-2 ${bgColor}`;
+      toast.innerHTML = `
+        <i data-lucide="${type === 'success' ? 'check' : type === 'error' ? 'alert-circle' : 'info'}" class="w-4 h-4"></i>
+        <span>${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
+

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 // Run database migrations on start (non-fatal)
@@ -20,20 +21,28 @@ app.use(cors({
 }));
 const PORT = process.env.PORT || 3000;
 
+// Middleware
+app.use(express.json());
+
+// Serve static assets for the Admin Dashboard
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
 // Routes
 const healthRoute = require('./routes/health');
 const activateRoute = require('./routes/activate');
 const adminRoute = require('./routes/admin');
 const trialsRoute = require('./routes/trials');
 
-// Middleware
-app.use(express.json());
-
 // Routes implementation
 app.use('/api/health', healthRoute);
 app.use('/api/activate', activateRoute);
 app.use('/api/admin', adminRoute);
 app.use('/api/trials', trialsRoute);
+
+// Web Dashboard route aliases
+app.get(['/', '/dashboard', '/admin'], (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
@@ -46,6 +55,7 @@ app.use((err, req, res, next) => {
 
 // Start Server
 app.listen(PORT, () => {
-    console.log(`Shootix License Server running on port ${PORT}`);
+    console.log(`Shootix & Vidos License Server running on port ${PORT}`);
+    console.log(`Dashboard available at: http://localhost:${PORT}/`);
     console.log(`Database URL: ${process.env.DATABASE_URL ? 'Connected' : 'Missing DATABASE_URL'}`);
 });

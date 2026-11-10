@@ -18,11 +18,24 @@ const isAdmin = (req, res, next) => {
 
 
 /**
+ * Helper to normalize app name
+ */
+const normalizeApp = (app) => {
+    if (!app) return 'photo_invoice';
+    const lower = String(app).trim().toLowerCase();
+    if (lower === 'youtube_video_downloader' || lower === 'vidos' || lower === 'tubeflow' || lower === 'yt_downloader') {
+        return 'youtube_video_downloader';
+    }
+    return 'photo_invoice';
+};
+
+/**
  * @route   POST /api/admin/generate-key
  * @desc    Generate a new unique license key and store it in the DB
  */
 router.post('/generate-key', isAdmin, async (req, res) => {
     const {
+        app,
         durationDays,
         customerName,
         customerEmail,
@@ -31,6 +44,7 @@ router.post('/generate-key', isAdmin, async (req, res) => {
     } = req.body;
 
     const newKey = uuidv4();
+    const targetApp = normalizeApp(app);
 
     try {
         let query, params;
@@ -38,8 +52,9 @@ router.post('/generate-key', isAdmin, async (req, res) => {
         if (durationDays) {
             // Timed key: set expires_at to NOW() + durationDays
             query = `
-                INSERT INTO license_keys (key, expires_at, customer_name, customer_email, studio_name, phone)
-                VALUES ($1, NOW() + ($2 * INTERVAL '1 day'), $3, $4, $5, $6)
+                INSERT INTO license_keys (key, expires_at, customer_name, customer_email, studio_name, phone, app)
+                VALUES ($1, NOW() + ($2 * INTERVAL '1 day'), $3, $4, $5, $6, $7)
+                RETURNING *
             `;
             params = [
                 newKey,
@@ -47,28 +62,33 @@ router.post('/generate-key', isAdmin, async (req, res) => {
                 customerName || null,
                 customerEmail || null,
                 studioName || null,
-                phone || null
+                phone || null,
+                targetApp
             ];
         } else {
             // Lifetime key: expires_at stays NULL
             query = `
-                INSERT INTO license_keys (key, expires_at, customer_name, customer_email, studio_name, phone)
-                VALUES ($1, NULL, $2, $3, $4, $5)
+                INSERT INTO license_keys (key, expires_at, customer_name, customer_email, studio_name, phone, app)
+                VALUES ($1, NULL, $2, $3, $4, $5, $6)
+                RETURNING *
             `;
             params = [
                 newKey,
                 customerName || null,
                 customerEmail || null,
                 studioName || null,
-                phone || null
+                phone || null,
+                targetApp
             ];
         }
 
-        await db.query(query, params);
+        const result = await db.query(query, params);
 
         res.status(201).json({
             success: true,
-            key: newKey
+            key: newKey,
+            app: targetApp,
+            license: result.rows[0]
         });
     } catch (err) {
         console.error('Key generation error:', err);
@@ -78,13 +98,23 @@ router.post('/generate-key', isAdmin, async (req, res) => {
 
 /**
  * @route   GET /api/admin/licenses
- * @desc    Fetch all license keys from the database
+ * @desc    Fetch all license keys from the database, optionally filtered by app
  */
 router.get('/licenses', isAdmin, async (req, res) => {
+    const { app } = req.query;
+
     try {
-        const result = await db.query(
-            'SELECT * FROM license_keys ORDER BY created_at DESC'
-        );
+        let query = 'SELECT * FROM license_keys';
+        const params = [];
+
+        if (app && app.toLowerCase() !== 'all') {
+            query += ' WHERE app = $1';
+            params.push(normalizeApp(app));
+        }
+
+        query += ' ORDER BY created_at DESC';
+
+        const result = await db.query(query, params);
         res.json(result.rows);
     } catch (err) {
         console.error('Fetch licenses error:', err);
@@ -146,13 +176,23 @@ router.delete('/license/:id', isAdmin, async (req, res) => {
 
 /**
  * @route   GET /api/admin/trials
- * @desc    Fetch all trial machines from the database
+ * @desc    Fetch all trial machines from the database, optionally filtered by app
  */
 router.get('/trials', isAdmin, async (req, res) => {
+    const { app } = req.query;
+
     try {
-        const result = await db.query(
-            'SELECT id, hwid, started_at, last_heartbeat FROM trials ORDER BY started_at DESC'
-        );
+        let query = 'SELECT id, hwid, app, started_at, last_heartbeat, app_version, os_info FROM trials';
+        const params = [];
+
+        if (app && app.toLowerCase() !== 'all') {
+            query += ' WHERE app = $1';
+            params.push(normalizeApp(app));
+        }
+
+        query += ' ORDER BY started_at DESC';
+
+        const result = await db.query(query, params);
         res.json(result.rows);
     } catch (err) {
         console.error('Fetch trials error:', err);
@@ -162,7 +202,7 @@ router.get('/trials', isAdmin, async (req, res) => {
 
 /**
  * @route   PUT /api/admin/license/:id/metadata
- * @desc    Update customer and studio metadata for a license key
+ * @desc    Update customer, studio metadata, and optional app for a license key
  */
 router.put('/license/:id/metadata', isAdmin, async (req, res) => {
     const { id } = req.params;
@@ -170,7 +210,8 @@ router.put('/license/:id/metadata', isAdmin, async (req, res) => {
         customerName,
         customerEmail,
         studioName,
-        phone
+        phone,
+        app
     } = req.body;
 
     try {
@@ -179,11 +220,12 @@ router.put('/license/:id/metadata', isAdmin, async (req, res) => {
             SET customer_name = $1, 
                 customer_email = $2, 
                 studio_name = $3, 
-                phone = $4 
-            WHERE id = $5::integer 
-            RETURNING id
+                phone = $4,
+                app = CASE WHEN $5::text IS NOT NULL AND $5::text <> '' THEN $5::text ELSE app END
+            WHERE id = $6::integer 
+            RETURNING *
         `;
-        const params = [customerName, customerEmail, studioName, phone, id];
+        const params = [customerName, customerEmail, studioName, phone, app ? normalizeApp(app) : null, id];
 
         const result = await db.query(query, params);
 
@@ -191,7 +233,7 @@ router.put('/license/:id/metadata', isAdmin, async (req, res) => {
             return res.status(404).json({ error: "License key not found" });
         }
 
-        res.json({ success: true, message: "Metadata updated successfully" });
+        res.json({ success: true, message: "Metadata updated successfully", license: result.rows[0] });
     } catch (err) {
         console.error('Update metadata error:', err);
         res.status(500).json({ error: "Failed to update metadata" });

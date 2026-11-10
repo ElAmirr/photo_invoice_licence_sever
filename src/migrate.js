@@ -44,11 +44,17 @@ const migrate = async () => {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='os_info') THEN
         ALTER TABLE license_keys ADD COLUMN os_info TEXT DEFAULT NULL;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_keys' AND column_name='app') THEN
+        ALTER TABLE license_keys ADD COLUMN app TEXT DEFAULT 'photo_invoice';
+      END IF;
+      UPDATE license_keys SET app = 'photo_invoice' WHERE app IS NULL;
     END $$;
+
+    CREATE INDEX IF NOT EXISTS idx_license_keys_app ON license_keys (app);
 
     CREATE TABLE IF NOT EXISTS trials (
       id SERIAL PRIMARY KEY,
-      hwid TEXT UNIQUE NOT NULL,
+      hwid TEXT NOT NULL,
       started_at TIMESTAMP DEFAULT NOW(),
       last_heartbeat TIMESTAMP DEFAULT NULL
     );
@@ -61,7 +67,22 @@ const migrate = async () => {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trials' AND column_name='os_info') THEN
         ALTER TABLE trials ADD COLUMN os_info TEXT DEFAULT NULL;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='trials' AND column_name='app') THEN
+        ALTER TABLE trials ADD COLUMN app TEXT DEFAULT 'photo_invoice';
+      END IF;
+      UPDATE trials SET app = 'photo_invoice' WHERE app IS NULL;
+
+      -- Safely drop old single-hwid unique constraint if present
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'trials_hwid_key' 
+        AND conrelid = 'trials'::regclass
+      ) THEN
+        ALTER TABLE trials DROP CONSTRAINT trials_hwid_key;
+      END IF;
     END $$;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_trials_hwid_app ON trials (hwid, app);
   `;
 
   try {
